@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DelugeGuard — Predicting the Flow, Protecting the Lives</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ================= TOP BAR ================= -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+        <path d="M13 2C13 2 5 12.5 5 17.5C5 21.6 8.6 25 13 25C17.4 25 21 21.6 21 17.5C21 12.5 13 2 13 2Z"
+          stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <div class="brand-text">
+      <span class="brand-name">DelugeGuard<span class="brand-dot">.</span></span>
+      <span class="brand-sub">Predicting the Flow, Protecting the Lives</span>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <div class="status-chip" id="cityStatusChip">
+      <span class="status-dot" id="cityStatusDot"></span>
+      <span id="cityStatusLabel">CITY STATUS: NOMINAL</span>
+    </div>
+    <button class="btn btn-ghost" id="resetBtn" title="Reset to calm baseline">Reset</button>
+    <button class="btn btn-primary" id="generateBtn">
+      <span class="btn-icon">⟳</span> Generate Random Scenario
+    </button>
+  </div>
+</header>
+
+<!-- ================= ALERT MARQUEE ================= -->
+<div class="marquee-wrap" id="marqueeWrap" aria-live="polite">
+  <div class="marquee-track" id="marqueeTrack"></div>
+</div>
+
+<!-- ================= MAIN LAYOUT ================= -->
+<main class="layout">
+
+  <!-- MAP COLUMN -->
+  <section class="map-col">
+    <div id="map"></div>
+
+    <div class="legend panel-glass">
+      <div class="legend-title">RISK SCALE</div>
+      <div class="legend-row"><span class="swatch swatch-green"></span> Green — Safe, normal flow</div>
+      <div class="legend-row"><span class="swatch swatch-yellow"></span> Yellow — Watch, rising levels</div>
+      <div class="legend-row"><span class="swatch swatch-orange"></span> Orange — Warning, high risk</div>
+      <div class="legend-row"><span class="swatch swatch-red"></span> Red — Hotspot, avoid / impassable</div>
+      <div class="legend-row legend-route"><span class="swatch swatch-route"></span> Calculated safe route</div>
+    </div>
+
+    <div class="map-caption">
+      Markers show simulated drainage-sensor nodes across Kolkata. Pulsing red rings mark active or predicted flood hotspots.
+    </div>
+  </section>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- PREDICTION PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Flash-Flood Prediction Engine</h2>
+        <span class="panel-tag">pre-event forecast</span>
+      </div>
+
+      <div class="gauge-wrap">
+        <svg class="gauge" viewBox="0 0 200 120">
+          <path class="gauge-track" d="M10,110 A90,90 0 0,1 190,110" />
+          <path class="gauge-fill" id="gaugeFill" d="M10,110 A90,90 0 0,1 190,110" />
+          <line class="gauge-needle" id="gaugeNeedle" x1="100" y1="110" x2="100" y2="30" />
+          <circle class="gauge-hub" cx="100" cy="110" r="6" />
+        </svg>
+        <div class="gauge-readout">
+          <span class="gauge-value" id="gaugeValue">--</span>
+          <span class="gauge-label" id="gaugeLabel">AWAITING DATA</span>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric">
+          <span class="metric-label">Rainfall intensity</span>
+          <span class="metric-value" id="metricRain">— mm/hr</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Avg. drainage blockage</span>
+          <span class="metric-value" id="metricBlockage">— %</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Est. lead time</span>
+          <span class="metric-value" id="metricLead">— </span>
+        </div>
+      </div>
+
+      <div class="formula-note">
+        <span class="formula-label">Composite score</span>
+        risk = 0.6 × (rainfall ÷ 100) + 0.4 × (blockage ÷ 100)
+      </div>
+    </div>
+
+    <!-- ROUTE PLANNER -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Safe Route Planner</h2>
+        <span class="panel-tag">avoids hotspots</span>
+      </div>
+
+      <label class="field-label" for="fromSelect">From</label>
+      <select id="fromSelect" class="select"></select>
+
+      <label class="field-label" for="toSelect">To</label>
+      <select id="toSelect" class="select"></select>
+
+      <div class="route-actions">
+        <button class="btn btn-primary btn-block" id="calcRouteBtn">Calculate Safe Route</button>
+        <button class="btn btn-ghost btn-block" id="clearRouteBtn">Clear Route</button>
+      </div>
+
+      <div class="route-summary" id="routeSummary" hidden>
+        <div class="route-summary-row">
+          <span>Distance</span><span id="routeDistance">—</span>
+        </div>
+        <div class="route-summary-row">
+          <span>Est. travel time</span><span id="routeTime">—</span>
+        </div>
+        <div class="route-summary-row">
+          <span>Zones avoided</span><span id="routeAvoided">—</span>
+        </div>
+        <div class="route-note" id="routeNote"></div>
+      </div>
+    </div>
+
+    <!-- ALERT FEED -->
+    <div class="panel panel-grow">
+      <div class="panel-head">
+        <h2>Live Alert Feed</h2>
+        <span class="panel-tag">simulated</span>
+      </div>
+      <div class="alert-feed" id="alertFeed">
+        <div class="alert-empty">No alerts yet. Generate a scenario to begin monitoring.</div>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<div class="footer-strip">
+  Demo build for hackathon evaluation — sensor, rainfall and blockage data are simulated, not live. Node layout reflects approximate real Kolkata locations for illustrative purposes only.
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="locations.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
